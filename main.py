@@ -191,8 +191,9 @@ def createMeetings(meetingsList):
     return(meetingsReport)
 
 # Create MeetingReport output to send back to Saba
-# If hosts all have Zoom paid licenses, generate Zoom Meetings
+#
 def saveMeetingsReportJSON(meetingsReport):
+    if (outputFileJSON != ""):
         try :
             with open((outputFileJSON), 'w', encoding='utf-8') as f:
                 json.dump(meetingsReport, f, ensure_ascii=False, indent=2)
@@ -201,6 +202,7 @@ def saveMeetingsReportJSON(meetingsReport):
             print("*** Failed to write JSON output File. \n")
 
 def saveMeetingsReportCSV(meetingsReport):
+    if (outputFileCSV != ""):
         fields = ["Saba_ID","Zoom_UUID","Zoom_ID","start_url","join_url"]
         try :
             with open((outputFileCSV), 'w', encoding='utf-8') as f:
@@ -228,7 +230,7 @@ def main():
         saveMeetingsReportJSON(meetingsReport)
         saveMeetingsReportCSV(meetingsReport)
     else:
-        print("\n*** Didn't create meetings report because not all hosts were licensed.")
+        print("\n*** Didn't create meetings report because not all hosts and alternates were licensed.")
 
 if __name__=="__main__":
     main()
