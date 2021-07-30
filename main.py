@@ -137,7 +137,6 @@ def checkLicense(meetingsList):
     #Check each Alternate host
     for eachMeeting in meetingsList:
         zoomUser = eachMeeting['settings']["alternative_hosts"]
-        altHostStatus = "True"
         if zoomUser != "":
             url = "https://api.zoom.us/v2/users/" + str(zoomUser)
             payload = {}
@@ -146,12 +145,12 @@ def checkLicense(meetingsList):
                 data=json.loads(response.text)
                 if data["type"] != 2 :
                     print("\n*** " + (zoomUser) + " (AltHost) is a free user. " + "Class_No " + eachMeeting["Saba_ID"])
-                    altHostStatus = "False"
+                    hostStatus = "False"
                 else :
                     print('.', end='')
             except  :
                 print("\n*** " + (zoomUser) + " (AltHost) is not in this account's Zoom user list. " + "Class_No " + eachMeeting["Saba_ID"])
-                altHostStatus = "False"
+                hostStatus = "False"
         else:
             print("\n--- Class_No " + eachMeeting["Saba_ID"] + " has no alternate host")
 
@@ -191,7 +190,7 @@ def createMeetings(meetingsList):
 
 # Create MeetingReport output to send back to Saba
 # If hosts all have Zoom paid licenses, generate Zoom Meetings
-def saveMeetingsReport(meetingsReport):
+def saveMeetingsReportJSON(meetingsReport):
         try :
             with open((outputFile), 'w', encoding='utf-8') as f:
                 json.dump(meetingsReport, f, ensure_ascii=False, indent=2)
@@ -209,7 +208,7 @@ def main():
     #If all the hosts are licensed we can proceed with creating Zoom Meetings and generating report
     if (hostsLicensed == "True"):
         meetingsReport = createMeetings(meetingsList)
-        saveMeetingsReport(meetingsReport)
+        saveMeetingsReportJSON(meetingsReport)
     else:
         print("\n*** Didn't create meetings report because not all hosts were licensed.")
 
