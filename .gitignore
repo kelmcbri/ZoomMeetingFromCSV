@@ -1,6 +1,8 @@
 #config Files
 config.json
 config.txt
+#Output Reports
+SabaZoomReport.json
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

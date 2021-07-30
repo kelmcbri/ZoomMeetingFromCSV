@@ -11,8 +11,9 @@ from datetime import datetime
 Load the keys from config.json file
 The config.json file looks like this:
 {
-  "API_KEY": "yourkeyhere",
-  "API_SEC": "yoursecrethere",
+  "bearerToken": "your bearer token here",
+  "API_KEY": "yourkeyhere - don't use if you have bearer token",
+  "API_SEC": "yoursecrethere - don't use if you have bearer token",
   "inputFile: "CSV path/filename with class info",
   "outputFile": "JSON path/filename with combined saba zoom info"
 }
@@ -20,6 +21,7 @@ The config.json file looks like this:
 with open('./config.json', 'r') as reader:
     try:
         config = json.load(reader)
+        bearer = config["bearerToken"]
         API_KEY = config["API_KEY"]
         API_SEC = config["API_SEC"]
         inputFile = config["inputFile"]
@@ -49,6 +51,7 @@ The input file must be in CSV format.
 
 """
 def getCSV():
+    print("\nReading CSV data from file " + (inputFile) )
     meetingDetails = []
 
     with open(inputFile) as csvfile:
@@ -99,7 +102,7 @@ def getCSV():
                              "audio": "both",
                              "auto_recording": "none",
                              "waiting_room": "False",
-                             "alternative_hosts": "",
+                             "alternative_hosts": rows["alternative_host"],
                              "alternative_hosts_email_notification": "False"
                              }
                 })
@@ -109,9 +112,12 @@ def getCSV():
 
 # Check to be sure all the hosts are zoom registered with paid license
 def checkLicense(meetingsList):
-    headers = {'authorization': 'Bearer %s' % generateToken()}
-    print("\nChecking each instructor to see if they are a Zoom Host: \n")
-
+    if bearer != "":
+        headers = {'authorization': ('Bearer ' + (bearer))}
+    else:
+        headers = {'authorization': 'Bearer %s' % generateToken()}
+    print("\nChecking each instructor and alternate to see if they are a Licensed Zoom Host: \n")
+    #Check Each Host
     for eachMeeting in meetingsList:
         zoomUser = eachMeeting['host']
         url = "https://api.zoom.us/v2/users/" + str(zoomUser)
@@ -121,19 +127,45 @@ def checkLicense(meetingsList):
             response = requests.request("GET", url, headers=headers, data=payload)
             data=json.loads(response.text)
             if data["type"] != 2 :
-                print("\n*** " + (zoomUser) + " is a free license Zoom user in this account. \n")
+                print("\n*** " + (zoomUser) + " is a free user. " + "Class_No " + eachMeeting["Saba_ID"] + "\n")
                 hostStatus = "False"
             else :
-                print(".")
+                print('.', end='')
         except  :
-            print("\n*** " + (zoomUser) + " is not in this account's Zoom user list. \n" )
+            print("\n*** " + (zoomUser) + " is not in this account's Zoom user list. " + "Class_No " + eachMeeting["Saba_ID"])
             hostStatus = "False"
+    #Check each Alternate host
+    for eachMeeting in meetingsList:
+        zoomUser = eachMeeting['settings']["alternative_hosts"]
+        altHostStatus = "True"
+        if zoomUser != "":
+            url = "https://api.zoom.us/v2/users/" + str(zoomUser)
+            payload = {}
+            try :
+                response = requests.request("GET", url, headers=headers, data=payload)
+                data=json.loads(response.text)
+                if data["type"] != 2 :
+                    print("\n*** " + (zoomUser) + " (AltHost) is a free user. " + "Class_No " + eachMeeting["Saba_ID"])
+                    altHostStatus = "False"
+                else :
+                    print('.', end='')
+            except  :
+                print("\n*** " + (zoomUser) + " (AltHost) is not in this account's Zoom user list. " + "Class_No " + eachMeeting["Saba_ID"])
+                altHostStatus = "False"
+        else:
+            print("\n--- Class_No " + eachMeeting["Saba_ID"] + " has no alternate host")
+
     return(hostStatus)
 
-# Function to create meeting
+# Function to create new zoom meetings for every meeting read in from csv file
 def createMeetings(meetingsList):
-    headers = {'authorization': 'Bearer %s' % generateToken(),
-               'content-type': 'application/json'}
+    print("\nCreating Zoom Meetings")
+    if bearer != "":
+        headers = {'authorization': ('Bearer ' + (bearer)),
+                   'content-type': 'application/json'}
+    else:
+        headers = {'authorization': 'Bearer %s' % generateToken(),
+                   'content-type': 'application/json'}
     meetingsReport = []
     for eachMeeting in meetingsList:
         user = eachMeeting['host']
@@ -157,20 +189,29 @@ def createMeetings(meetingsList):
               " with Saba_ID " + response_json_object["Saba_ID"])
     return(meetingsReport)
 
-#import meeting info from csv file
-meetingsList = getCSV()
-
-# Creat a new Zoom meeting for each meeting read in from csv file
-# Generate meetine report that links zoom info with Saba Class ID
+# Create MeetingReport output to send back to Saba
 # If hosts all have Zoom paid licenses, generate Zoom Meetings
-if checkLicense(meetingsList) == "True" :
-    meetingsReport = createMeetings(meetingsList)
-    # Save Meetings Report to JSON file
-    try :
-        with open((outputFile), 'w', encoding='utf-8') as f:
-            json.dump(meetingsReport, f, ensure_ascii=False, indent=2)
-        print("Output File " + str(outputFile) + " with Saba-Zoom info created. \n")
-    except :
-        print("*** Failed to write output File. \n")
-else:
-    print("*** No Zoom meetings were created. Correct Hosts in input file and run again. \n")
+def saveMeetingsReport(meetingsReport):
+        try :
+            with open((outputFile), 'w', encoding='utf-8') as f:
+                json.dump(meetingsReport, f, ensure_ascii=False, indent=2)
+            print("Output File " + str(outputFile) + " with Saba-Zoom info created. \n")
+        except :
+            print("*** Failed to write output File. \n")
+
+def main():
+    # import meeting info from csv file into meetingsList array
+    meetingsList = getCSV()
+    # Check to see if hosts and alternate hosts are licensed users
+    hostsLicensed = "False"
+    hostsLicensed = checkLicense(meetingsList)
+
+    #If all the hosts are licensed we can proceed with creating Zoom Meetings and generating report
+    if (hostsLicensed == "True"):
+        meetingsReport = createMeetings(meetingsList)
+        saveMeetingsReport(meetingsReport)
+    else:
+        print("\n*** Didn't create meetings report because not all hosts were licensed.")
+
+if __name__=="__main__":
+    main()
