@@ -15,7 +15,8 @@ The config.json file looks like this:
   "API_KEY": "yourkeyhere - don't use if you have bearer token",
   "API_SEC": "yoursecrethere - don't use if you have bearer token",
   "inputFile: "CSV path/filename with class info",
-  "outputFile": "JSON path/filename with combined saba zoom info"
+  "outputFileJSON": "JSON path/filename with combined saba zoom info",
+  "outputFileCSV": "CSV path/filename with combined saba zoom info"
 }
 """
 with open('./config.json', 'r') as reader:
@@ -25,7 +26,8 @@ with open('./config.json', 'r') as reader:
         API_KEY = config["API_KEY"]
         API_SEC = config["API_SEC"]
         inputFile = config["inputFile"]
-        outputFile = config["outputFile"]
+        outputFileJSON = config["outputFileJSON"]
+        outputFileCSV = config["outputFileCSV"]
     except:
         print("An exception occured reading in the config.json file.")
 
@@ -192,11 +194,26 @@ def createMeetings(meetingsList):
 # If hosts all have Zoom paid licenses, generate Zoom Meetings
 def saveMeetingsReportJSON(meetingsReport):
         try :
-            with open((outputFile), 'w', encoding='utf-8') as f:
+            with open((outputFileJSON), 'w', encoding='utf-8') as f:
                 json.dump(meetingsReport, f, ensure_ascii=False, indent=2)
-            print("Output File " + str(outputFile) + " with Saba-Zoom info created. \n")
+            print("Output File " + str(outputFileJSON) + " with Saba-Zoom info created.")
         except :
-            print("*** Failed to write output File. \n")
+            print("*** Failed to write JSON output File. \n")
+
+def saveMeetingsReportCSV(meetingsReport):
+        fields = ["Saba_ID","Zoom_UUID","Zoom_ID","start_url","join_url"]
+        try :
+            with open((outputFileCSV), 'w', encoding='utf-8') as f:
+                #Define the header row
+                writer = csv.DictWriter(f,fieldnames = fields)
+                #Write the header row
+                writer.writeheader()
+                #Fill in data rows
+                writer.writerows(meetingsReport)
+            print("Output File " + str(outputFileCSV) + " with Saba-Zoom info created.")
+        except :
+            print("*** Failed to write CSV output File. \n")
+
 
 def main():
     # import meeting info from csv file into meetingsList array
@@ -209,6 +226,7 @@ def main():
     if (hostsLicensed == "True"):
         meetingsReport = createMeetings(meetingsList)
         saveMeetingsReportJSON(meetingsReport)
+        saveMeetingsReportCSV(meetingsReport)
     else:
         print("\n*** Didn't create meetings report because not all hosts were licensed.")
 
