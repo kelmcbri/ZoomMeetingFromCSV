@@ -6,21 +6,32 @@ from time import time
 import csv
 from datetime import datetime
 
+#Globals
+bearer = ""
+API_KEY = ""
+API_SEC = ""
+inputFile = ""
+outputFileJSON = ""
+outputFileCSV = ""
 
 """
 Load the keys from config.json file
 The config.json file looks like this:
 {
   "bearerToken": "your bearer token here",
-  "API_KEY": "yourkeyhere - don't use if you have bearer token",
-  "API_SEC": "yoursecrethere - don't use if you have bearer token",
+  "API_KEY": "",
+  "API_SEC": "",
   "inputFile: "CSV path/filename with class info",
   "outputFileJSON": "JSON path/filename with combined saba zoom info",
   "outputFileCSV": "CSV path/filename with combined saba zoom info"
 }
+
+NOTE - if you are using your JWT bearer Token, you should leave API_KEY and API_SEC as ""
+
 """
-with open('./config.json', 'r') as reader:
-    try:
+# Read in the global variables from config.json
+try:
+    with open('./config.json', 'r') as reader:
         config = json.load(reader)
         bearer = config["bearerToken"]
         API_KEY = config["API_KEY"]
@@ -28,8 +39,8 @@ with open('./config.json', 'r') as reader:
         inputFile = config["inputFile"]
         outputFileJSON = config["outputFileJSON"]
         outputFileCSV = config["outputFileCSV"]
-    except:
-        print("An exception occured reading in the config.json file.")
+except:
+    print("An exception occured reading in the config.json file.")
 
 # Generate a token using the pyjwt library
 def generateToken():
@@ -103,7 +114,7 @@ def getCSV():
                              "watermark": "true",
                              "audio": "both",
                              "auto_recording": "none",
-                             "waiting_room": "False",
+                             "waiting_room": "True",
                              "alternative_hosts": rows["alternative_host"],
                              "alternative_hosts_email_notification": "False"
                              }
@@ -191,7 +202,6 @@ def createMeetings(meetingsList):
     return(meetingsReport)
 
 # Create MeetingReport output to send back to Saba
-#
 def saveMeetingsReportJSON(meetingsReport):
     if (outputFileJSON != ""):
         try :
@@ -200,7 +210,6 @@ def saveMeetingsReportJSON(meetingsReport):
             print("Output File " + str(outputFileJSON) + " with Saba-Zoom info created.")
         except :
             print("*** Failed to write JSON output File. \n")
-
 def saveMeetingsReportCSV(meetingsReport):
     if (outputFileCSV != ""):
         fields = ["Saba_ID","Zoom_UUID","Zoom_ID","start_url","join_url"]
@@ -218,6 +227,7 @@ def saveMeetingsReportCSV(meetingsReport):
 
 
 def main():
+
     # import meeting info from csv file into meetingsList array
     meetingsList = getCSV()
     # Check to see if hosts and alternate hosts are licensed users
